@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { User, Activity, ArrowRight, Scale, Ruler, Calendar, Target } from 'lucide-react';
+import { User, Activity, ArrowRight, Scale, Ruler, Calendar } from 'lucide-react';
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
@@ -18,7 +17,6 @@ export default function Onboarding() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) router.push('/login');
     });
@@ -29,35 +27,30 @@ export default function Onboarding() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
-    // Basic BMR Calculation (Mifflin-St Jeor)
     const w = parseFloat(weight);
     const h = parseFloat(height);
     const a = parseInt(age);
     let bmr = (10 * w) + (6.25 * h) - (5 * a);
     bmr += gender === 'male' ? 5 : -161;
 
-    // Active multiplier (assume moderate)
     let tdee = bmr * 1.55;
-
     let targetCalories = Math.round(tdee);
     let targetWeight = w;
+    
     if (goal === 'lose') {
       targetCalories -= 500;
-      targetWeight = w - 5; // Arbitrary 5kg goal
+      targetWeight = w - 5; 
     } else if (goal === 'gain') {
       targetCalories += 300;
       targetWeight = w + 5;
     }
 
-    // Protein rule of thumb: ~2g per kg of bodyweight
     const targetProtein = Math.round(w * 2);
 
-    // 1. Update Auth Metadata (Name)
     await supabase.auth.updateUser({
       data: { name: name }
     });
 
-    // 2. Insert into public.users
     await supabase.from('users').insert([{
       id: session.user.id,
       target_weight: targetWeight,
@@ -65,7 +58,6 @@ export default function Onboarding() {
       target_protein: targetProtein
     }]);
 
-    // 3. Log initial weight
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('weight_logs').insert([{
       user_id: session.user.id,
@@ -110,8 +102,8 @@ export default function Onboarding() {
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 pl-1">Biological Sex (for BMR)</label>
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => setGender('male')} className={py-3 rounded-xl border text-sm font-bold transition-all }>Male</button>
-                    <button onClick={() => setGender('female')} className={py-3 rounded-xl border text-sm font-bold transition-all }>Female</button>
+                    <button onClick={() => setGender('male')} className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === 'male' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>Male</button>
+                    <button onClick={() => setGender('female')} className={`py-3 rounded-xl border text-sm font-bold transition-all ${gender === 'female' ? 'bg-pink-500/20 border-pink-500 text-pink-400' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>Female</button>
                   </div>
                 </div>
                 <button onClick={() => name && age ? setStep(2) : null} className="w-full mt-4 bg-white text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50">
@@ -139,9 +131,9 @@ export default function Onboarding() {
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 pl-1">Your Goal</label>
                   <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => setGoal('lose')} className={py-3 rounded-xl border text-xs font-bold transition-all }>Lose Fat</button>
-                    <button onClick={() => setGoal('maintain')} className={py-3 rounded-xl border text-xs font-bold transition-all }>Maintain</button>
-                    <button onClick={() => setGoal('gain')} className={py-3 rounded-xl border text-xs font-bold transition-all }>Build Muscle</button>
+                    <button onClick={() => setGoal('lose')} className={`py-3 rounded-xl border text-xs font-bold transition-all ${goal === 'lose' ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>Lose Fat</button>
+                    <button onClick={() => setGoal('maintain')} className={`py-3 rounded-xl border text-xs font-bold transition-all ${goal === 'maintain' ? 'bg-zinc-700 border-zinc-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>Maintain</button>
+                    <button onClick={() => setGoal('gain')} className={`py-3 rounded-xl border text-xs font-bold transition-all ${goal === 'gain' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-zinc-950 border-zinc-800 text-zinc-400'}`}>Build Muscle</button>
                   </div>
                 </div>
                 <div className="flex gap-3 mt-4">
