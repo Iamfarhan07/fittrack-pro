@@ -9,11 +9,52 @@ import {
 import { Activity, BicepsFlexed, Flame } from 'lucide-react';
 
 const EXERCISES: Record<string, string[]> = {
-  Chest: ['Bench Press', 'Incline Dumbbell Press', 'Chest Flyes', 'Push-ups', 'Cable Crossovers', 'Decline Bench Press', 'Pec Deck Machine', 'Dumbbell Pullover'],
-  Back: ['Deadlift', 'Barbell Row', 'Pull-ups', 'Lat Pulldown', 'Seated Cable Row', 'Face Pulls', 'T-Bar Row', 'Single Arm Dumbbell Row', 'Straight Arm Pulldown'],
-  Shoulders: ['Overhead Press', 'Lateral Raises', 'Front Raises', 'Arnold Press', 'Reverse Pec Deck', 'Upright Row', 'Shrugs', 'Cable Lateral Raises'],
-  Legs: ['Squat', 'Leg Press', 'Romanian Deadlift', 'Leg Extensions', 'Calf Raises', 'Lunges', 'Hamstring Curls', 'Bulgarian Split Squats', 'Hack Squat', 'Hip Thrusts'],
-  Arms: ['Bicep Curls', 'Tricep Extensions', 'Hammer Curls', 'Skull Crushers', 'Tricep Dips', 'Preacher Curls', 'Cable Pushdowns', 'Concentration Curls']
+  'Chest': [
+    'Barbell Bench Press', 'Incline Barbell Bench Press', 'Decline Bench Press',
+    'Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Flyes',
+    'Cable Crossover', 'Pec Deck Machine', 'Push-Ups', 'Dips (chest-focused)', 'Machine Chest Press'
+  ],
+  'Back': [
+    'Deadlift', 'Pull-Ups / Chin-Ups', 'Lat Pulldown', 'Bent-Over Barbell Row',
+    'Seated Cable Row', 'One-Arm Dumbbell Row', 'T-Bar Row', 'Face Pulls',
+    'Straight-Arm Pulldown', 'Hyperextensions (lower back)'
+  ],
+  'Shoulders': [
+    'Overhead Barbell Press', 'Seated Dumbbell Shoulder Press', 'Arnold Press',
+    'Lateral Raises', 'Front Raises', 'Rear Delt Flyes', 'Cable Lateral Raise',
+    'Upright Row', 'Shrugs (traps)'
+  ],
+  'Biceps': [
+    'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl', 'Preacher Curl',
+    'Incline Dumbbell Curl', 'Cable Curl', 'Concentration Curl', 'Chin-Ups (bicep-focused)'
+  ],
+  'Triceps': [
+    'Close-Grip Bench Press', 'Tricep Pushdown (rope/bar)', 'Skull Crushers',
+    'Overhead Tricep Extension', 'Dips (tricep-focused)', 'Kickbacks', 'Diamond Push-Ups'
+  ],
+  'Quadriceps': [
+    'Barbell Back Squat', 'Front Squat', 'Leg Press', 'Walking Lunges',
+    'Leg Extension', 'Bulgarian Split Squat', 'Goblet Squat', 'Step-Ups'
+  ],
+  'Hamstrings & Glutes': [
+    'Romanian Deadlift', 'Lying Leg Curl', 'Seated Leg Curl', 'Hip Thrust',
+    'Glute Bridge', 'Good Mornings', 'Cable Pull-Through', 'Sumo Deadlift'
+  ],
+  'Calves': [
+    'Standing Calf Raise', 'Seated Calf Raise', 'Leg Press Calf Raise',
+    'Donkey Calf Raise', 'Single-Leg Calf Raise'
+  ],
+  'Abs & Core': [
+    'Plank', 'Hanging Leg Raise', 'Cable Crunch', 'Ab Wheel Rollout',
+    'Russian Twists', 'Bicycle Crunch', 'Sit-Ups / Crunches', 'Side Plank', 'Woodchopper'
+  ],
+  'Forearms': [
+    'Wrist Curl', 'Reverse Wrist Curl', 'Farmer\'s Carry', 'Reverse Curl', 'Plate Pinch Hold'
+  ],
+  'Full Body': [
+    'Clean and Jerk', 'Snatch', 'Kettlebell Swing', 'Burpees', 'Thruster',
+    'Battle Ropes', 'Sled Push/Pull'
+  ]
 };
 
 export default function Dashboard({ userId }: { userId: string }) {
