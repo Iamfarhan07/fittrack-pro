@@ -228,8 +228,13 @@ export default function NutritionTracker({ userId }: { userId: string }) {
             {meals.length > 0 ? meals.map((meal) => (
               <div key={meal.id} className="bg-zinc-950 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-colors flex justify-between items-center group">
                 <div className="min-w-0 pr-3">
-                  <p className="font-medium text-sm text-zinc-200 truncate capitalize">{meal.food_name}</p>
-                  <div className="flex items-center gap-2 mt-0.5 text-[10px] font-medium">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-medium text-sm text-zinc-200 truncate capitalize">{meal.food_name}</p>
+                    <span className="text-[10px] text-zinc-500 font-medium bg-zinc-900 px-1.5 py-0.5 rounded">
+                      {new Date(meal.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-medium">
                     <span className="text-blue-400">{meal.protein}g P</span>
                     <span className="text-zinc-600">•</span>
                     <span className="text-purple-400">{meal.carbs}g C</span>

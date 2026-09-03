@@ -71,6 +71,7 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
   // UI States
   const [isFinished, setIsFinished] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
+  const [dailyCalories, setDailyCalories] = useState(0);
 
   useEffect(() => {
     setExercise(EXERCISES[muscle][0]);
@@ -89,14 +90,36 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
     fetchPastWorkouts();
   }, [userId, isFinished]);
 
-  async function checkOrCreateWorkout() {
+  async function checkOrCreateWorkout(forceNew = false) {
     const today = new Date().toISOString().split('T')[0];
-    let { data } = await supabase.from('workouts').select('id').eq('user_id', userId).eq('date', today).single();
-    if (!data) {
+    
+    if (forceNew) {
       const { data: newWorkout } = await supabase.from('workouts').insert([{ user_id: userId, date: today, split_type: 'Push' }]).select().single();
       if (newWorkout) setWorkoutId(newWorkout.id);
+      return newWorkout?.id;
+    }
+
+    let { data: workouts } = await supabase.from('workouts')
+      .select('id, workout_sets(exercise_name)')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .order('created_at', { ascending: false });
+    
+    if (workouts && workouts.length > 0) {
+      const latestWorkout = workouts[0];
+      const isFinished = latestWorkout.workout_sets?.some((s: any) => s.exercise_name === 'WORKOUT_FINISHED');
+      if (isFinished) {
+        const { data: newWorkout } = await supabase.from('workouts').insert([{ user_id: userId, date: today, split_type: 'Push' }]).select().single();
+        if (newWorkout) setWorkoutId(newWorkout.id);
+        return newWorkout?.id;
+      } else {
+        setWorkoutId(latestWorkout.id);
+        return latestWorkout.id;
+      }
     } else {
-      setWorkoutId(data.id);
+      const { data: newWorkout } = await supabase.from('workouts').insert([{ user_id: userId, date: today, split_type: 'Push' }]).select().single();
+      if (newWorkout) setWorkoutId(newWorkout.id);
+      return newWorkout?.id;
     }
   }
 
@@ -107,9 +130,12 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
       .eq('user_id', userId)
       .order('date', { ascending: false });
     
-    // Filter out empty workouts
+    // Filter out empty workouts and dummy finished sets
     if (data) {
-      const validHistory = data.filter(w => w.workout_sets && w.workout_sets.length > 0);
+      const validHistory = data.map((w: any) => ({
+        ...w,
+        workout_sets: w.workout_sets?.filter((s: any) => s.exercise_name !== 'WORKOUT_FINISHED') || []
+      })).filter((w: any) => w.workout_sets && w.workout_sets.length > 0);
       setPastWorkouts(validHistory);
     }
   }
@@ -126,10 +152,10 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
     setPreviousBest(data ? { weight: data.weight_kg, reps: data.reps } : null);
   }
 
-  async function fetchLoggedSets() {
-    if (!workoutId) return;
-    const { data } = await supabase.from('workout_sets').select('*').eq('workout_id', workoutId).order('timestamp', { ascending: true });
-    if (data) setLoggedSets(data);
+  async function fetchLoggedSets(idToFetch = workoutId) {
+    if (!idToFetch) return;
+    const { data } = await supabase.from('workout_sets').select('*').eq('workout_id', idToFetch).order('timestamp', { ascending: true });
+    if (data) setLoggedSets(data.filter(s => s.exercise_name !== 'WORKOUT_FINISHED'));
   }
 
   const addSetRow = () => setSetsInput([...setsInput, { reps: '', weight: '' }]);
@@ -146,20 +172,17 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
     if (validSets.length === 0) return;
 
     if (!workoutId) {
-      await checkOrCreateWorkout();
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase.from('workouts').select('id').eq('user_id', userId).eq('date', today).single();
-      if (!data) return;
-      setWorkoutId(data.id);
+      const activeId = await checkOrCreateWorkout();
+      if (!activeId) return;
       setIsSaving(true);
       const newSetsToInsert = validSets.map(set => ({
-        workout_id: data.id,
+        workout_id: activeId,
         exercise_name: exercise,
         weight_kg: parseFloat(set.weight),
         reps: parseInt(set.reps),
       }));
       await supabase.from('workout_sets').insert(newSetsToInsert);
-      fetchLoggedSets();
+      fetchLoggedSets(activeId);
       setSetsInput([{ reps: '', weight: '' }]);
       fetchPreviousBest();
       setIsSaving(false);
@@ -181,20 +204,55 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
   }
 
   const handleFinishWorkout = () => {
+    fetchDailyCalories();
     setShowReport(true);
   };
 
-  const closeReport = () => {
+  const closeReport = async () => {
     setShowReport(false);
     setIsFinished(true); // Hide logger and show success state
+    
+    if (workoutId) {
+      await supabase.from('workout_sets').insert([{
+        workout_id: workoutId,
+        exercise_name: 'WORKOUT_FINISHED',
+        weight_kg: 0,
+        reps: 0
+      }]);
+    }
+    
     setWorkoutId(null);
     setLoggedSets([]);
   };
+
+  async function fetchDailyCalories() {
+    const today = new Date().toISOString().split('T')[0];
+    const { data } = await supabase.from('meals').select('calories').eq('user_id', userId).eq('date', today);
+    if (data) {
+      const total = data.reduce((acc, meal) => acc + Number(meal.calories), 0);
+      setDailyCalories(total);
+    }
+  }
 
   // Calculate Report Stats for current session
   const totalSets = loggedSets.length;
   const totalVolume = loggedSets.reduce((acc, set) => acc + (set.weight_kg * set.reps), 0);
   const uniqueExercises = new Set(loggedSets.map(set => set.exercise_name)).size;
+  
+  // Calculate volume per muscle group for the report
+  const volumeByMuscle: Record<string, number> = {};
+  loggedSets.forEach(set => {
+    let foundMuscle = 'Other';
+    for (const [muscleGroup, exercisesList] of Object.entries(EXERCISES)) {
+      if (exercisesList.includes(set.exercise_name)) {
+        foundMuscle = muscleGroup;
+        break;
+      }
+    }
+    volumeByMuscle[foundMuscle] = (volumeByMuscle[foundMuscle] || 0) + (set.weight_kg * set.reps);
+  });
+  
+  const muscleGroupsUsed = Object.entries(volumeByMuscle).sort((a, b) => b[1] - a[1]);
 
   return (
     <div className="space-y-6">
@@ -229,7 +287,7 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Session Complete!</h3>
             <p className="text-zinc-400 text-sm mb-6 max-w-sm">Your workout has been securely saved to your history. Awesome work today!</p>
-            <button onClick={() => { setIsFinished(false); checkOrCreateWorkout(); }} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-colors">
+            <button onClick={() => { setIsFinished(false); checkOrCreateWorkout(true); }} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-colors">
               Log Another Session
             </button>
           </div>
@@ -370,9 +428,14 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
                       className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-900/50 transition-colors"
                     >
                       <div>
-                        <p className="font-bold text-white text-sm">
-                          {new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="font-bold text-white text-sm">
+                            {new Date(workout.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                          <span className="text-[10px] text-zinc-500 font-medium bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                            {new Date(workout.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                         <p className="text-xs text-zinc-500 mt-0.5">{wSets.length} sets • {wVolume.toLocaleString()} kg volume</p>
                       </div>
                       <div className="text-zinc-500">
@@ -419,20 +482,33 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
               </div>
               
               <h2 className="text-2xl font-bold text-white mb-2">Workout Complete!</h2>
-              <p className="text-zinc-400 text-sm mb-8">Great job crushing your session today. Here is your daily summary.</p>
+              <p className="text-zinc-400 text-sm mb-6">Great job crushing your session today. Here is your daily summary.</p>
 
-              <div className="w-full grid grid-cols-2 gap-3 mb-8">
+              <div className="w-full grid grid-cols-3 gap-3 mb-6">
                 <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Volume</p>
-                  <p className="text-2xl font-black text-white">{totalVolume.toLocaleString()} <span className="text-sm font-medium text-zinc-500">kg</span></p>
+                  <p className="text-xl font-black text-white">{totalVolume.toLocaleString()} <span className="text-xs font-medium text-zinc-500">kg</span></p>
                 </div>
                 <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Sets</p>
-                  <p className="text-2xl font-black text-white">{totalSets}</p>
+                  <p className="text-xl font-black text-white">{totalSets}</p>
                 </div>
-                <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 col-span-2">
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Exercises Performed</p>
-                  <p className="text-xl font-bold text-blue-400">{uniqueExercises}</p>
+                <div className="bg-zinc-950 p-4 rounded-2xl border border-orange-500/20">
+                  <p className="text-[10px] font-bold text-orange-500/70 uppercase tracking-wider mb-1">Daily Calories</p>
+                  <p className="text-xl font-black text-orange-400">{Math.round(dailyCalories)} <span className="text-xs font-medium text-orange-500/50">kcal</span></p>
+                </div>
+              </div>
+              
+              {/* Muscle Volume Breakdown */}
+              <div className="w-full bg-zinc-950 rounded-2xl border border-zinc-800 p-4 mb-8">
+                <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Volume by Muscle Group</p>
+                <div className="space-y-2">
+                  {muscleGroupsUsed.map(([muscle, volume]) => (
+                    <div key={muscle} className="flex justify-between items-center text-sm">
+                      <span className="text-zinc-300 font-medium">{muscle}</span>
+                      <span className="text-white font-bold">{volume.toLocaleString()} <span className="text-zinc-500 text-xs font-normal">kg</span></span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
