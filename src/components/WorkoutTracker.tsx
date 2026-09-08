@@ -484,7 +484,7 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
               <h2 className="text-2xl font-bold text-white mb-2">Workout Complete!</h2>
               <p className="text-zinc-400 text-sm mb-6">Great job crushing your session today. Here is your daily summary.</p>
 
-              <div className="w-full grid grid-cols-3 gap-3 mb-6">
+              <div className="w-full grid grid-cols-2 gap-3 mb-6">
                 <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Volume</p>
                   <p className="text-xl font-black text-white">{totalVolume.toLocaleString()} <span className="text-xs font-medium text-zinc-500">kg</span></p>
@@ -493,7 +493,7 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Total Sets</p>
                   <p className="text-xl font-black text-white">{totalSets}</p>
                 </div>
-                <div className="bg-zinc-950 p-4 rounded-2xl border border-orange-500/20">
+                <div className="col-span-2 bg-zinc-950 p-4 rounded-2xl border border-orange-500/20">
                   <p className="text-[10px] font-bold text-orange-500/70 uppercase tracking-wider mb-1">Daily Calories</p>
                   <p className="text-xl font-black text-orange-400">{Math.round(dailyCalories)} <span className="text-xs font-medium text-orange-500/50">kcal</span></p>
                 </div>

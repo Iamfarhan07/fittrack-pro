@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { fetchNutritionData } from '@/app/actions/nutrition';
 import { supabase } from '@/lib/supabase';
-import { Search, Save, Utensils, AlertCircle, Apple, Beef, Croissant, Droplets } from 'lucide-react';
+import { Search, Save, Utensils, AlertCircle, Apple, Beef, Croissant, Droplets, ChevronUp, ChevronDown, CalendarDays } from 'lucide-react';
 
 export default function NutritionTracker({ userId }: { userId: string }) {
   const [query, setQuery] = useState('');
@@ -13,6 +13,9 @@ export default function NutritionTracker({ userId }: { userId: string }) {
   
   const [dailyTotals, setDailyTotals] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [meals, setMeals] = useState<any[]>([]);
+  
+  const [mealHistory, setMealHistory] = useState<any[]>([]);
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
   // Targets
   const targetCalories = 2100;
@@ -22,6 +25,7 @@ export default function NutritionTracker({ userId }: { userId: string }) {
 
   useEffect(() => {
     fetchDailyMeals();
+    fetchMealHistory();
   }, [userId]);
 
   async function fetchDailyMeals() {
@@ -41,6 +45,32 @@ export default function NutritionTracker({ userId }: { userId: string }) {
         fats: acc.fats + Number(meal.fats),
       }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
       setDailyTotals(totals);
+    }
+  }
+
+  async function fetchMealHistory() {
+    const { data } = await supabase
+      .from('meals')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
+    
+    if (data) {
+      // Group by date
+      const grouped = data.reduce((acc: any, meal: any) => {
+        if (!acc[meal.date]) {
+          acc[meal.date] = { date: meal.date, meals: [], totals: { calories: 0, protein: 0, carbs: 0, fats: 0 } };
+        }
+        acc[meal.date].meals.push(meal);
+        acc[meal.date].totals.calories += Number(meal.calories);
+        acc[meal.date].totals.protein += Number(meal.protein);
+        acc[meal.date].totals.carbs += Number(meal.carbs);
+        acc[meal.date].totals.fats += Number(meal.fats);
+        return acc;
+      }, {});
+      
+      setMealHistory(Object.values(grouped));
     }
   }
 
@@ -94,6 +124,7 @@ export default function NutritionTracker({ userId }: { userId: string }) {
       setParsedFood(null);
       setQuery('');
       fetchDailyMeals();
+      fetchMealHistory();
     } else {
       console.error('Supabase Error:', error);
       setError(`Failed to save: ${error.message || 'Check connection'}.`);
@@ -103,7 +134,8 @@ export default function NutritionTracker({ userId }: { userId: string }) {
   const getProgress = (current: number, target: number) => Math.min((current / target) * 100, 100);
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col h-full shadow-sm overflow-hidden">
+    <div className="flex flex-col gap-6 h-full">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col shadow-sm overflow-hidden flex-shrink-0">
       
       {/* Header */}
       <div className="p-5 border-b border-zinc-800/80 bg-zinc-900/50 flex justify-between items-center">
@@ -257,6 +289,65 @@ export default function NutritionTracker({ userId }: { userId: string }) {
         </div>
 
       </div>
+
+      {/* --- NUTRITION HISTORY SECTION --- */}
+      {mealHistory.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col shadow-sm overflow-hidden animate-in fade-in duration-500">
+          <div className="p-5 border-b border-zinc-800/80 bg-zinc-900/50 flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/20">
+              <CalendarDays size={18} />
+            </div>
+            <h2 className="text-lg font-bold text-white">Nutrition History</h2>
+          </div>
+          
+          <div className="p-5">
+            <div className="space-y-3">
+              {mealHistory.map((day: any) => {
+                const isExpanded = expandedHistory === day.date;
+                return (
+                  <div key={day.date} className="bg-zinc-950 border border-zinc-800/80 rounded-xl overflow-hidden transition-all duration-300">
+                    <div 
+                      onClick={() => setExpandedHistory(isExpanded ? null : day.date)}
+                      className="p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-900/50 transition-colors"
+                    >
+                      <div>
+                        <p className="font-bold text-white text-sm">
+                          {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-0.5">{day.meals.length} items • {Math.round(day.totals.calories)} kcal</p>
+                      </div>
+                      <div className="text-zinc-500">
+                        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      </div>
+                    </div>
+                    
+                    {isExpanded && (
+                      <div className="p-4 border-t border-zinc-800/50 bg-zinc-900/20">
+                        <div className="space-y-2">
+                          {day.meals.map((m: any) => (
+                            <div key={m.id} className="flex justify-between items-center text-sm py-1.5 border-b border-zinc-800/30 last:border-0">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-zinc-200 capitalize">{m.food_name}</span>
+                                  <span className="text-[10px] text-zinc-500 font-medium bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-zinc-500 mt-0.5">{Math.round(m.protein)}P • {Math.round(m.carbs)}C • {Math.round(m.fats)}F</span>
+                              </div>
+                              <span className="font-bold text-orange-400">{Math.round(m.calories)} <span className="text-[9px] uppercase tracking-wider text-zinc-600">kcal</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
