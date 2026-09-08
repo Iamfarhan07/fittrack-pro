@@ -289,6 +289,7 @@ export default function NutritionTracker({ userId }: { userId: string }) {
         </div>
 
       </div>
+    </div>
 
       {/* --- NUTRITION HISTORY SECTION --- */}
       {mealHistory.length > 0 && (
