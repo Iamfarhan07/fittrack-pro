@@ -415,7 +415,7 @@ export default function WorkoutTracker({ userId }: { userId: string }) {
           </div>
           
           <div className="p-5">
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
               {pastWorkouts.map((workout) => {
                 const wSets = workout.workout_sets || [];
                 const wVolume = wSets.reduce((acc: number, s: any) => acc + (s.weight_kg * s.reps), 0);

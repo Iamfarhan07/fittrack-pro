@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import NutritionTracker from '@/components/NutritionTracker';
 import WorkoutTracker from '@/components/WorkoutTracker';
 import Dashboard from '@/components/Dashboard';
+import HistorySearch from '@/components/HistorySearch';
 import { Activity, Dumbbell, Apple, LogOut, Sparkles } from 'lucide-react';
 
 export default function Home() {
@@ -102,15 +103,19 @@ export default function Home() {
           {/* Left Column (Charts & Workout) */}
           <div className="xl:col-span-8 flex flex-col gap-6">
             
-            {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-900/30 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
+            {/* Welcome Banner & Search */}
+            <div className="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-900/30 rounded-2xl p-5 relative overflow-hidden flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
               <div className="relative z-10">
                 <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
                   <Sparkles size={18} className="text-blue-400" /> Ready to crush your goals today?
                 </h2>
                 <p className="text-zinc-400 text-sm max-w-xl">
-                  Log your meals and workouts below. Your analytics will automatically update in real-time.
+                  Log your meals and workouts below, or search your history.
                 </p>
+              </div>
+              
+              <div className="relative z-10 w-full xl:w-auto">
+                <HistorySearch userId={userId} />
               </div>
             </div>
 
