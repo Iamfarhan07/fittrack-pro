@@ -7,10 +7,11 @@ import NutritionTracker from '@/components/NutritionTracker';
 import WorkoutTracker from '@/components/WorkoutTracker';
 import Dashboard from '@/components/Dashboard';
 import HistorySearch from '@/components/HistorySearch';
-import { Activity, Dumbbell, Apple, LogOut, Sparkles } from 'lucide-react';
+import { Activity, Dumbbell, Apple, LogOut, Sparkles, Shield } from 'lucide-react';
 
 export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -21,7 +22,7 @@ export default function Home() {
       if (event === 'PASSWORD_RECOVERY') {
         router.push('/update-password');
       } else if (session?.user) {
-        setUserId(session.user.id);
+        checkUser(); // Re-check on auth state change to get access profile
       } else {
         router.push('/login');
       }
@@ -36,11 +37,18 @@ export default function Home() {
       router.push('/login');
     } else {
       setUserId(session.user.id);
-      const { data: userProfile } = await supabase.from('users').select('id').eq('id', session.user.id).single();
+      const { data: userProfile } = await supabase.from('users').select('id, has_access, is_admin').eq('id', session.user.id).single();
       if (!userProfile) {
         router.push('/onboarding');
         return;
       }
+      
+      if (!userProfile.has_access && !userProfile.is_admin) {
+        router.push('/pending-approval');
+        return;
+      }
+      
+      setIsAdmin(userProfile.is_admin);
     }
     setLoading(false);
   }
@@ -88,6 +96,14 @@ export default function Home() {
                 <Dumbbell size={14} className="text-blue-400" /> Workouts
               </div>
             </div>
+            {isAdmin && (
+              <button 
+                onClick={() => router.push('/admin')}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-full border border-blue-500 text-sm font-medium text-white transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+              >
+                <Shield size={16} /> <span className="hidden sm:inline">Admin Panel</span>
+              </button>
+            )}
             <button 
               onClick={handleSignOut}
               className="flex items-center gap-2 bg-zinc-900 hover:bg-red-500/10 px-4 py-2 rounded-full border border-zinc-800 hover:border-red-500/30 text-sm font-medium text-zinc-400 hover:text-red-400 transition-all"

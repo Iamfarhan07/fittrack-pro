@@ -100,7 +100,11 @@ export default function Onboarding() {
       id: session.user.id,
       target_weight: finalTargetWeight,
       target_calories: targetCals,
-      target_protein: targetProtein
+      target_protein: targetProtein,
+      full_name: name,
+      email: session.user.email,
+      has_access: false,
+      is_admin: false
     }]);
 
     // 3. Log initial weight
